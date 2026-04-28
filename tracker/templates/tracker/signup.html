@@ -1,0 +1,122 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Sign Up — FinDjango{% endblock %}
+
+{% block content %}
+
+<div style="max-width:420px; margin:0 auto;">
+
+  <h1 class="page-title">Create Account</h1>
+  <p class="page-subtitle">Start tracking your finances today</p>
+
+  <div class="card">
+    <form method="POST" novalidate id="signupForm">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" placeholder="Letters, numbers, underscores only"
+               value="{{ request.POST.username }}" autocomplete="username" required autofocus />
+        <div style="font-size:0.78rem; color:var(--muted); margin-top:5px;">Only letters, numbers and underscores. No spaces.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <!-- password with show/hide toggle -->
+        <div style="position:relative;">
+          <input type="password" id="password" name="password" placeholder="Min. 6 characters"
+                 autocomplete="new-password" minlength="6" required style="padding-right:48px;" />
+          <button type="button" id="togglePassword"
+                  style="position:absolute; right:14px; top:50%; transform:translateY(-50%);
+                         background:none; border:none; cursor:pointer; font-size:1rem;
+                         color:var(--muted); padding:0;">👁</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="confirm_password">Confirm Password</label>
+        <!-- confirm password with its own toggle -->
+        <div style="position:relative;">
+          <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat your password"
+                 autocomplete="new-password" required style="padding-right:48px;" />
+          <button type="button" id="toggleConfirm"
+                  style="position:absolute; right:14px; top:50%; transform:translateY(-50%);
+                         background:none; border:none; cursor:pointer; font-size:1rem;
+                         color:var(--muted); padding:0;">👁</button>
+        </div>
+        <!-- password match message shown here by JS -->
+        <div id="matchMsg" style="font-size:0.78rem; margin-top:5px; display:none;"></div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%; margin-top:12px;">Create Account</button>
+    </form>
+  </div>
+
+  <!-- link to login page -->
+  <p class="text-muted" style="text-align:center; margin-top:20px;">
+    Already have an account?
+    <a href="{% url 'login' %}" style="color:var(--accent); font-weight:500;">Login here</a>
+  </p>
+
+</div>
+
+<script>
+  var passInput = document.getElementById('password');
+  var confirmInput = document.getElementById('confirm_password');
+  var matchMsg = document.getElementById('matchMsg');
+
+  // reusable toggle function for show/hide password
+  // used for both password fields so i don't repeat the same code
+  function makeToggle(btnId, inputId) {
+    var btn = document.getElementById(btnId);
+    var input = document.getElementById(inputId);
+
+    btn.addEventListener('click', function() {
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+      }
+    });
+  }
+
+  // attach toggle to both password fields
+  makeToggle('togglePassword', 'password');
+  makeToggle('toggleConfirm', 'confirm_password');
+
+  // check if passwords match and show message
+  function checkMatch() {
+    if (confirmInput.value.length === 0) {
+      matchMsg.style.display = 'none';
+      return;
+    }
+
+    matchMsg.style.display = 'block';
+
+    if (passInput.value === confirmInput.value) {
+      matchMsg.textContent = '✅ Passwords match';
+      matchMsg.style.color = 'var(--green)';
+    } else {
+      matchMsg.textContent = '❌ Passwords do not match';
+      matchMsg.style.color = 'var(--red)';
+    }
+  }
+
+  // run checkMatch whenever user types in either field
+  passInput.addEventListener('input', checkMatch);
+  confirmInput.addEventListener('input', checkMatch);
+
+  // also check on submit - stop if passwords don't match
+  document.getElementById('signupForm').addEventListener('submit', function(e) {
+    if (passInput.value !== confirmInput.value) {
+      e.preventDefault(); // stop form from submitting
+      matchMsg.style.display = 'block';
+      matchMsg.textContent = '❌ Passwords do not match';
+      matchMsg.style.color = 'var(--red)';
+      confirmInput.focus();
+    }
+  });
+</script>
+
+{% endblock %}
