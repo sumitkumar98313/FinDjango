@@ -1,0 +1,84 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Delete Account — FinDjango{% endblock %}
+
+{% block content %}
+
+<div style="max-width:420px; margin:0 auto;">
+
+  <!-- back link -->
+  <a href="{% url 'profile' %}" class="text-muted" style="font-size:0.9rem;">← Back to Profile</a>
+
+  <h1 class="page-title" style="margin-top:20px; color:var(--red);">Delete Account</h1>
+  <p class="page-subtitle">This action is permanent and cannot be undone</p>
+
+  <!-- red bordered danger card -->
+  <div class="card" style="border-color:rgba(248,113,113,0.3);">
+
+    <!-- warning box listing what will be deleted -->
+    <div style="background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.2); border-radius:8px; padding:14px 18px; margin-bottom:24px;">
+      <strong style="color:var(--red);">⚠ Warning</strong>
+      <ul style="color:var(--muted); font-size:0.88rem; margin-top:10px; padding-left:18px; line-height:1.8;">
+        <li>Your profile and account data</li>
+        <li>All your transactions and history</li>
+        <li>Your monthly reports and budget settings</li>
+      </ul>
+    </div>
+
+    <form method="POST" novalidate id="deleteForm">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label for="password">Confirm with your password</label>
+        <input type="password" id="password" name="password" placeholder="Enter your password to confirm" required />
+      </div>
+
+      <!-- checkbox must be ticked before delete button activates -->
+      <div style="display:flex; align-items:flex-start; gap:10px; margin-bottom:24px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px;">
+        <input type="checkbox" id="confirmCheck" style="margin-top:3px; accent-color:var(--red); width:16px; height:16px; cursor:pointer; flex-shrink:0;" />
+        <label for="confirmCheck" style="font-size:0.88rem; color:var(--muted); cursor:pointer; line-height:1.5;">
+          I understand this is permanent and I want to delete my account.
+        </label>
+      </div>
+
+      <!-- delete button starts disabled until checkbox is ticked -->
+      <div style="display:flex; gap:12px;">
+        <button type="submit" id="deleteBtn" disabled
+                style="flex:1; background:#f87171; color:#fff; border:none; padding:11px 24px;
+                       border-radius:8px; font-size:0.9rem; font-weight:600; cursor:not-allowed;
+                       opacity:0.5; transition:all 0.2s; font-family:'DM Sans',sans-serif;">
+          Yes, Delete My Account
+        </button>
+        <a href="{% url 'profile' %}" class="btn btn-secondary" style="flex:1; text-align:center;">Cancel</a>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<script>
+  var checkbox = document.getElementById('confirmCheck');
+  var deleteBtn = document.getElementById('deleteBtn');
+  var deleteForm = document.getElementById('deleteForm');
+
+  // enable delete button only when checkbox is ticked
+  checkbox.addEventListener('change', function() {
+    if (this.checked) {
+      deleteBtn.disabled = false;
+      deleteBtn.style.opacity = '1';
+      deleteBtn.style.cursor = 'pointer';
+    } else {
+      deleteBtn.disabled = true;
+      deleteBtn.style.opacity = '0.5';
+      deleteBtn.style.cursor = 'not-allowed';
+    }
+  });
+
+  // when form submits show loading state
+  deleteForm.addEventListener('submit', function() {
+    deleteBtn.disabled = true;
+    deleteBtn.style.opacity = '0.5';
+    deleteBtn.textContent = 'Deleting...';
+  });
+</script>
+
+{% endblock %}
