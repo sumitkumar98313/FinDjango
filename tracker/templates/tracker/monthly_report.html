@@ -1,0 +1,167 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Monthly Report — FinDjango{% endblock %}
+
+{% block content %}
+
+<h1 class="page-title">Monthly Report</h1>
+<p class="page-subtitle">{{ month_name }} {{ year }}</p>
+
+<!-- month and year filter form -->
+<div class="card" style="margin-bottom:24px;">
+  <form method="GET" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+
+    <div style="flex:1; min-width:140px;">
+      <label style="display:block; font-size:0.8rem; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Month</label>
+      <select name="month" class="form-input">
+        {% for num, name in months %}
+          <option value="{{ num }}" {% if num == month %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="flex:1; min-width:140px;">
+      <label style="display:block; font-size:0.8rem; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Year</label>
+      <select name="year" class="form-input">
+        {% for y in years %}
+          <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="padding:10px 20px;">View Report</button>
+  </form>
+</div>
+
+<!-- summary stat cards for selected month -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin-bottom:24px;">
+
+  <div class="card stat-card">
+    <div class="text-muted stat-label">Income</div>
+    <div class="stat-value text-green">₹{{ income }}</div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="text-muted stat-label">Expenses</div>
+    <div class="stat-value text-red">₹{{ expense }}</div>
+  </div>
+
+  <div class="card stat-card">
+    <div class="text-muted stat-label">Net Balance</div>
+    <div class="stat-value" style="color:{% if balance >= 0 %}var(--accent){% else %}var(--red){% endif %};">₹{{ balance }}</div>
+  </div>
+
+</div>
+
+<!-- two column - category breakdown + chart -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;" class="two-col">
+
+  <!-- expenses by category list -->
+  <div class="card">
+    <h3 class="section-head">By Category</h3>
+    {% if by_category %}
+      {% for cat, amt in by_category.items %}
+        <div style="display:flex; justify-content:space-between; padding:10px 0; {% if not forloop.last %}border-bottom:1px solid var(--border);{% endif %}">
+          <span class="text-muted">{{ cat }}</span>
+          <span style="font-weight:600; color:var(--red);">₹{{ amt }}</span>
+        </div>
+      {% endfor %}
+    {% else %}
+      <!-- no expenses this month -->
+      <div class="text-muted" style="text-align:center; padding:24px;">No expenses this month</div>
+    {% endif %}
+  </div>
+
+  <!-- spending pie chart -->
+  <div class="card">
+    <h3 class="section-head">Spending Chart</h3>
+    {% if by_category %}
+      <canvas id="reportChart" style="max-height:220px;"></canvas>
+    {% else %}
+      <!-- empty state when no data -->
+      <div style="text-align:center; padding:40px; color:var(--muted);">
+        <div style="font-size:2rem; margin-bottom:10px;">📊</div>
+        <div>No data for this month</div>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- all transactions for selected month -->
+<div class="card">
+  <h3 class="section-head">All Transactions — {{ month_name }} {{ year }}</h3>
+
+  {% if transactions %}
+    {% for tx in transactions %}
+    <div class="tx-row" style="{% if not forloop.last %}border-bottom:1px solid var(--border);{% endif %}">
+      <div style="display:flex; align-items:center; gap:12px;">
+
+        <!-- category icon - green for income, red for expense -->
+        <div class="tx-icon" style="background:{% if tx.type == 'income' %}rgba(74,222,128,0.1){% else %}rgba(248,113,113,0.1){% endif %};">
+          {{ tx.get_category_display|slice:":2" }}
+        </div>
+
+        <div>
+          <div class="tx-name">{{ tx.description }}</div>
+          <div class="tx-meta">{{ tx.category }} · {{ tx.date }}</div>
+        </div>
+      </div>
+
+      <!-- amount color depends on type -->
+      <div class="tx-amount" style="color:{% if tx.type == 'income' %}var(--green){% else %}var(--red){% endif %};">
+        {% if tx.type == 'income' %}+{% else %}-{% endif %}₹{{ tx.amount }}
+      </div>
+    </div>
+    {% endfor %}
+
+  {% else %}
+    <!-- no transactions for this month -->
+    <div style="text-align:center; padding:32px; color:var(--muted);">No transactions for {{ month_name }} {{ year }}</div>
+  {% endif %}
+</div>
+
+<!-- chart script - only runs if there is category data -->
+{% if by_category %}
+<script>
+  var ctx = document.getElementById('reportChart').getContext('2d');
+
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: {{ by_category_keys|safe }},
+      datasets: [{
+        data: {{ by_category_values|safe }},
+        backgroundColor: ['#2dd4bf','#4ade80','#f87171','#fbbf24','#a78bfa','#fb923c','#34d399','#f472b6'],
+        borderWidth: 2,
+        borderColor: '#134e4a',
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#99f6e4',
+            font: { family: 'DM Sans', size: 11 },
+            padding: 12,
+            boxWidth: 10
+          }
+        },
+        tooltip: {
+          callbacks: {
+            // show rupee symbol in tooltip
+            label: function(ctx) {
+              return ' ₹' + ctx.parsed.toLocaleString('en-IN');
+            }
+          }
+        }
+      },
+      cutout: '60%'
+    }
+  });
+</script>
+{% endif %}
+
+{% endblock %}
