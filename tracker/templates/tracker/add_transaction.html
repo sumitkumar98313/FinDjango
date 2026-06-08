@@ -1,0 +1,40 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Add Transaction — FinDjango{% endblock %}
+
+{% block content %}
+
+<!-- form container - max width so it doesn't stretch too wide -->
+<div style="max-width:520px; margin:0 auto;">
+
+  <!-- back link -->
+  <a href="{% url 'transactions' %}" class="text-muted" style="font-size:0.9rem;">← Back to Transactions</a>
+
+  <h1 class="page-title" style="margin-top:20px;">Add Transaction</h1>
+  <p class="page-subtitle">Log a new income or expense</p>
+
+  <div class="card">
+    <form method="POST" novalidate>
+      {% csrf_token %}
+
+      <!-- loop through all form fields automatically -->
+      {% for field in form %}
+        <div class="form-group">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+
+          <!-- show validation errors if any -->
+          {% if field.errors %}
+            {% for error in field.errors %}
+              <div style="color:var(--red); font-size:0.82rem; margin-top:4px;">{{ error }}</div>
+            {% endfor %}
+          {% endif %}
+
+        </div>
+      {% endfor %}
+
+      <button type="submit" class="btn btn-primary" style="width:100%;">Add Transaction</button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Transactions — FinDjango{% endblock %}
+
+{% block content %}
+
+<!-- page header with title and action buttons -->
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:8px;">
+  <div>
+    <h1 class="page-title">Transactions</h1>
+    <p class="page-subtitle">Your complete transaction history</p>
+  </div>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a href="{% url 'export_csv' %}" class="btn btn-secondary" style="font-size:0.85rem; padding:8px 16px;">📥 Export CSV</a>
+    <a href="{% url 'add_transaction' %}" class="btn btn-primary" style="font-size:0.85rem; padding:8px 16px;">+ Add New</a>
+  </div>
+</div>
+
+<!-- filter form -->
+<div class="card" style="margin-bottom:20px;">
+  <form method="GET" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+
+    <!-- filter by type -->
+    <div style="flex:1; min-width:140px;">
+      <label style="display:block; font-size:0.8rem; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Type</label>
+      <select name="type" class="form-input">
+        <option value="">All Types</option>
+        <option value="income" {% if type_filter == 'income' %}selected{% endif %}>Income</option>
+        <option value="expense" {% if type_filter == 'expense' %}selected{% endif %}>Expense</option>
+      </select>
+    </div>
+
+    <!-- filter by category -->
+    <div style="flex:1; min-width:140px;">
+      <label style="display:block; font-size:0.8rem; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Category</label>
+      <select name="category" class="form-input">
+        <option value="">All Categories</option>
+        {% for val, label in categories %}
+          <option value="{{ val }}" {% if category_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- filter by month -->
+    <div style="flex:1; min-width:140px;">
+      <label style="display:block; font-size:0.8rem; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Month</label>
+      <input type="month" name="month" value="{{ month_filter }}" class="form-input" />
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="padding:10px 20px;">Filter</button>
+    <a href="{% url 'transactions' %}" class="btn btn-secondary" style="padding:10px 20px;">Clear</a>
+
+  </form>
+</div>
+
+<!-- transactions list -->
+<div class="card">
+  {% if transactions %}
+    {% for tx in transactions %}
+    <div class="tx-row" style="{% if not forloop.last %}border-bottom:1px solid var(--border);{% endif %}">
+
+      <div style="display:flex; align-items:center; gap:12px;">
+
+        <!-- category emoji icon -->
+        <div class="tx-icon" style="background:{% if tx.type == 'income' %}rgba(74,222,128,0.1){% else %}rgba(248,113,113,0.1){% endif %};">
+          {{ tx.get_category_display|slice:":2" }}
+        </div>
+
+        <div>
+          <div class="tx-name">{{ tx.description }}</div>
+          <div class="tx-meta">{{ tx.category }} · {{ tx.date }}</div>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:14px;">
+
+        <!-- amount - green for income, red for expense -->
+        <div class="tx-amount" style="color:{% if tx.type == 'income' %}var(--green){% else %}var(--red){% endif %};">
+          {% if tx.type == 'income' %}+{% else %}-{% endif %}₹{{ tx.amount }}
+        </div>
+
+        <!-- delete button -->
+        <form method="POST" action="{% url 'delete_transaction' tx.id %}" onsubmit="return confirm('Delete this transaction?')">
+          {% csrf_token %}
+          <button type="submit" style="background:none; border:1px solid var(--border); color:var(--muted); width:30px; height:30px; border-radius:7px; cursor:pointer; font-size:0.8rem; transition:all 0.2s;"
+                  onmouseover="this.style.background='var(--red)';this.style.color='#fff'"
+                  onmouseout="this.style.background='none';this.style.color='var(--muted)'">✕</button>
+        </form>
+
+      </div>
+    </div>
+    {% endfor %}
+
+  {% else %}
+    <!-- no transactions found -->
+    <div style="text-align:center; padding:48px; color:var(--muted);">
+      <div style="font-size:2.5rem; margin-bottom:16px;">💸</div>
+      <div style="font-weight:500; margin-bottom:8px;">No transactions found</div>
+      <a href="{% url 'add_transaction' %}" style="color:var(--accent);">Add your first transaction →</a>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

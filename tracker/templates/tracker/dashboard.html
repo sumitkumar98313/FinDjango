@@ -1,0 +1,175 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Dashboard — FinDjango{% endblock %}
+
+{% block content %}
+
+<h1 class="page-title">Dashboard</h1>
+<p class="page-subtitle">Welcome back, {{ user.username }} 👋</p>
+
+<!-- budget warning shown if user exceeded their monthly budget -->
+{% if budget_warning %}
+<div style="background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.3); border-radius:var(--radius); padding:14px 18px; margin-bottom:24px; color:var(--red);">
+  ⚠ You have exceeded your monthly budget of ₹{{ budget }}!
+</div>
+{% endif %}
+
+<!-- summary stat cards row -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:16px; margin-bottom:28px;">
+
+  <!-- balance card -->
+  <div class="card stat-card">
+    <div class="text-muted stat-label">Balance</div>
+    <div class="stat-value" style="color:{% if balance >= 0 %}var(--accent){% else %}var(--red){% endif %};">₹{{ balance }}</div>
+    <div class="text-muted stat-sub">Overall</div>
+  </div>
+
+  <!-- income card -->
+  <div class="card stat-card">
+    <div class="text-muted stat-label">Income</div>
+    <div class="stat-value text-green">₹{{ total_income }}</div>
+    <div class="text-muted stat-sub">Total</div>
+  </div>
+
+  <!-- expenses card -->
+  <div class="card stat-card">
+    <div class="text-muted stat-label">Expenses</div>
+    <div class="stat-value text-red">₹{{ total_expense }}</div>
+    <div class="text-muted stat-sub">Total</div>
+  </div>
+
+  <!-- budget card - only shown if user has set a budget -->
+  {% if budget > 0 %}
+  <div class="card stat-card">
+    <div class="text-muted stat-label">Budget Used</div>
+    <div class="stat-value" style="color:{% if budget_used >= 100 %}var(--red){% elif budget_used >= 80 %}#fbbf24{% else %}var(--accent){% endif %};">{{ budget_used }}%</div>
+    <div class="text-muted stat-sub">of ₹{{ budget }}</div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- two column section - this month summary + pie chart -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;" class="two-col">
+
+  <!-- this month card -->
+  <div class="card">
+    <h3 class="section-head">This Month</h3>
+    <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+      <span class="text-muted">Income</span>
+      <span class="text-green" style="font-weight:600;">+₹{{ monthly_income }}</span>
+    </div>
+    <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+      <span class="text-muted">Expenses</span>
+      <span class="text-red" style="font-weight:600;">-₹{{ monthly_expense }}</span>
+    </div>
+    <hr>
+    <!-- action buttons -->
+    <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
+      <a href="{% url 'add_transaction' %}" class="btn btn-primary" style="font-size:0.85rem; padding:8px 16px;">+ Add Transaction</a>
+      <a href="{% url 'monthly_report' %}" class="btn btn-secondary" style="font-size:0.85rem; padding:8px 16px;">View Report</a>
+    </div>
+  </div>
+
+  <!-- spending breakdown pie chart -->
+  <div class="card">
+    <h3 class="section-head">Spending Breakdown</h3>
+    {% if expense_categories_list %}
+      <canvas id="pieChart" style="max-height:220px;"></canvas>
+    {% else %}
+      <!-- shown when no expenses yet -->
+      <div style="text-align:center; padding:40px; color:var(--muted);">
+        <div style="font-size:2rem; margin-bottom:10px;">📊</div>
+        <div>No expenses yet</div>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- recent transactions card -->
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <h3 class="section-head" style="margin-bottom:0;">Recent Transactions</h3>
+    <div style="display:flex; gap:10px;">
+      <a href="{% url 'export_csv' %}" class="btn btn-secondary" style="font-size:0.85rem; padding:8px 16px;">📥 Export CSV</a>
+      <a href="{% url 'transactions' %}" class="btn btn-secondary" style="font-size:0.85rem; padding:8px 16px;">View All</a>
+    </div>
+  </div>
+
+  <!-- loop through recent transactions -->
+  {% if recent %}
+    {% for tx in recent %}
+    <div class="tx-row" style="{% if not forloop.last %}border-bottom:1px solid var(--border);{% endif %}">
+      <div style="display:flex; align-items:center; gap:12px;">
+
+        <!-- category icon - green bg for income, red for expense -->
+        <div class="tx-icon" style="background:{% if tx.type == 'income' %}rgba(74,222,128,0.1){% else %}rgba(248,113,113,0.1){% endif %};">
+          {{ tx.get_category_display|slice:":2" }}
+        </div>
+
+        <div>
+          <div class="tx-name">{{ tx.description }}</div>
+          <div class="tx-meta">{{ tx.category }} · {{ tx.date }}</div>
+        </div>
+      </div>
+
+      <!-- amount - green for income, red for expense -->
+      <div class="tx-amount" style="color:{% if tx.type == 'income' %}var(--green){% else %}var(--red){% endif %};">
+        {% if tx.type == 'income' %}+{% else %}-{% endif %}₹{{ tx.amount }}
+      </div>
+    </div>
+    {% endfor %}
+
+  {% else %}
+    <!-- no transactions yet -->
+    <div style="text-align:center; padding:32px; color:var(--muted);">No transactions yet.</div>
+  {% endif %}
+</div>
+
+<!-- pie chart JS - only runs if there are expense categories -->
+{% if expense_categories_list %}
+<script>
+  var ctx = document.getElementById('pieChart').getContext('2d');
+
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: {{ expense_categories_list|safe }},
+      datasets: [{
+        data: {{ expense_amounts_list|safe }},
+        backgroundColor: ['#2dd4bf','#4ade80','#f87171','#fbbf24','#a78bfa','#fb923c','#34d399','#f472b6'],
+        borderWidth: 2,
+        borderColor: '#134e4a',
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#99f6e4',
+            font: { family: 'DM Sans', size: 11 },
+            padding: 12,
+            boxWidth: 10
+          }
+        },
+        tooltip: {
+          callbacks: {
+            // format tooltip to show rupee symbol
+            label: function(ctx) {
+              return ' ₹' + ctx.parsed.toLocaleString('en-IN');
+            }
+          }
+        }
+      },
+      cutout: '60%'  // doughnut hole size
+    }
+  });
+</script>
+{% endif %}
+
+{% endblock %}
+
+
