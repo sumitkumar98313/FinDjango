@@ -11,8 +11,8 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-finddjango-secret-key
 # debug mode - set to False in production
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-# allow all hosts for now - should be restricted in production
-ALLOWED_HOSTS = ['*']
+# only allow requests from our actual domain
+ALLOWED_HOSTS = ['findjango.onrender.com', '127.0.0.1', 'localhost']
 
 
 # apps installed in this project
